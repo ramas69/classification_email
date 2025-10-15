@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const stateData = JSON.parse(atob(state));
-    const { userId, redirectUrl } = stateData;
+    const { userId } = stateData;
 
     const googleClientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const googleClientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -110,44 +110,175 @@ Deno.serve(async (req: Request) => {
       console.error('Error creating email configuration:', configError);
     }
 
-    return new Response(
-      `<html>
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <style>
-            body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#f6fff8; margin:0; display:flex; align-items:center; justify-content:center; height:100vh; }
-            .card { background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:28px 32px; text-align:center; box-shadow:0 10px 20px rgba(0,0,0,0.06); }
-            .icon { width:56px; height:56px; border-radius:9999px; background:#ecfdf5; color:#059669; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:30px; }
-            .title { font-weight:700; color:#065f46; margin-bottom:4px; }
-            .subtitle { color:#475569; font-size:14px; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="icon">✓</div>
-            <div class="title">Connexion Gmail réussie</div>
-            <div class="subtitle">Vous pouvez fermer cette fenêtre.</div>
-          </div>
-          <script>
-            window.opener && window.opener.postMessage({ type: 'gmail-connected', email: '${userInfo.email}' }, '*');
-            setTimeout(() => window.close(), 800);
-          </script>
-        </body>
-      </html>`,
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'text/html' },
+    const htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion reussie</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
       }
-    );
+      .card {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        width: 100%;
+        animation: slideIn 0.4s ease-out;
+      }
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        animation: checkmark 0.6s ease-in-out 0.2s both;
+      }
+      @keyframes checkmark {
+        0% { transform: scale(0); opacity: 0; }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .checkmark {
+        width: 40px;
+        height: 40px;
+        stroke: white;
+        stroke-width: 3;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .checkmark-path {
+        stroke-dasharray: 50;
+        stroke-dashoffset: 50;
+        animation: draw 0.5s ease-out 0.4s forwards;
+      }
+      @keyframes draw {
+        to { stroke-dashoffset: 0; }
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 8px;
+      }
+      p {
+        font-size: 16px;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+      .email {
+        font-size: 14px;
+        color: #9ca3af;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">
+        <svg class="checkmark" viewBox="0 0 52 52">
+          <path class="checkmark-path" d="M14 27l10 10 20-20"/>
+        </svg>
+      </div>
+      <h1>Connexion reussie !</h1>
+      <p>Votre compte Gmail a ete connecte</p>
+      <p class="email">${userInfo.email}</p>
+    </div>
+    <script>
+      (function() {
+        if (window.opener) {
+          try {
+            window.opener.postMessage({
+              type: 'gmail-connected',
+              email: '${userInfo.email}'
+            }, '*');
+          } catch (e) {
+            console.error('Failed to send message:', e);
+          }
+        }
+        setTimeout(function() {
+          window.close();
+        }, 2000);
+      })();
+    </script>
+  </body>
+</html>`;
+
+    return new Response(htmlContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    });
   } catch (error) {
     console.error('Error in Gmail OAuth callback:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    
+    const errorHtml = `<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erreur</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #fee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
       }
-    );
+      .error {
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        text-align: center;
+        border: 2px solid #ef4444;
+        max-width: 400px;
+      }
+      h1 { color: #dc2626; margin-bottom: 12px; }
+      p { color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <div class="error">
+      <h1>Erreur de connexion</h1>
+      <p>${error.message}</p>
+    </div>
+  </body>
+</html>`;
+
+    return new Response(errorHtml, {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    });
   }
 });
