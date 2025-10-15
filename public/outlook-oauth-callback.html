@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirection Outlook…</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; height: 100vh; display:flex; align-items:center; justify-content:center; color:#334155; }
+    </style>
+  </head>
+  <body>
+    <div>Finalisation de la connexion Outlook…</div>
+    <script>
+      (async function () {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const code = params.get('code');
+          const state = params.get('state');
+          if (!code || !state) {
+            alert('Paramètres manquants (code/state).');
+            window.close();
+            return;
+          }
+          // Supabase URL et anon key (publique)
+          const SUPABASE_URL = 'https://yliurdpexhvatzkgehvy.supabase.co';
+          const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsaXVyZHBleGh2YXR6a2dlaHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzA4ODcsImV4cCI6MjA3NTQwNjg4N30.8T0VkYuAzLyd8_pQNPXToBlt2MMFV-irZ-cWIQ5vVDY';
+
+          // Appel POST vers la fonction Edge avec l’apikey en en-tête
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/outlook-oauth-callback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': ANON_KEY,
+            },
+            body: JSON.stringify({ code, state })
+          });
+
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            alert('Erreur callback Outlook: ' + (err.error || resp.status));
+            window.opener && window.opener.postMessage({ type: 'outlook-error', error: err.error || String(resp.status) }, '*');
+            setTimeout(() => window.close(), 1000);
+            return;
+          }
+
+          // Succès: notifie le parent et ferme
+          window.opener && window.opener.postMessage({ type: 'outlook-connected' }, '*');
+          setTimeout(() => window.close(), 500);
+        } catch (e) {
+          alert('Erreur: ' + (e && e.message ? e.message : e));
+          try { window.close(); } catch (_) {}
+        }
+      })();
+    </script>
+  </body>
+  </html>
+
+

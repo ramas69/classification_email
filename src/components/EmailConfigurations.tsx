@@ -1,0 +1,607 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { Mail, CheckCircle } from 'lucide-react';
+
+type SimpleConfigRow = {
+  id: string;
+  user_id: string;
+  email: string;
+  password: string | null;
+  smtp_host: string | null;
+  smtp_port: number | null;
+  imap_host: string | null;
+  imap_port: number | null;
+  provider?: string | null;
+  is_connected?: boolean | null;
+  company_name: string | null;
+  activity_description: string | null;
+  services_offered: string | null;
+  created_at: string;
+};
+
+export function EmailConfigurations() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<SimpleConfigRow[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<'choices' | 'imap_form' | 'account'>('choices');
+
+  // Formulaire simplifié selon votre JSON
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    imap_host: '',
+    imap_port: '993',
+    company_name: '',
+    activity_description: '',
+    services_offered: '',
+  });
+
+  useEffect(() => {
+    (async () => {
+      await loadLatestConfig();
+    })();
+  }, []);
+
+  // Listener global pour capter les messages OAuth même si la page a rerendu
+  useEffect(() => {
+    const oauthHandler = async (event: MessageEvent) => {
+      if (event?.data?.type === 'gmail-connected' || event?.data?.type === 'outlook-connected') {
+        try {
+          const provider = event.data.type === 'gmail-connected' ? 'gmail' : 'outlook';
+          await supabase.from('email_configurations').upsert({
+            user_id: user?.id as string,
+            name: event.data.email || provider,
+            email: event.data.email || '',
+            provider,
+            is_connected: true,
+          }, { onConflict: 'user_id' });
+        } catch (e) {
+          console.error('Upsert config après OAuth (global handler):', e);
+        }
+        await loadLatestConfig();
+        setMode('account');
+      } else if (event?.data?.type === 'outlook-error') {
+        const err = event?.data?.error || 'Erreur inconnue';
+        const desc = event?.data?.description || '';
+        alert(`Outlook OAuth a échoué: ${err}${desc ? ` - ${desc}` : ''}`);
+      }
+    };
+    window.addEventListener('message', oauthHandler);
+    return () => window.removeEventListener('message', oauthHandler);
+  }, [user?.id]);
+
+  const loadLatestConfig = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('email_configurations')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      const list = data || [];
+      setItems(list);
+      if (list.length === 0) {
+        const { data: gmail } = await supabase
+          .from('gmail_tokens')
+          .select('email')
+          .eq('user_id', user?.id)
+          .maybeSingle();
+        if (gmail?.email) {
+          await supabase.from('email_configurations').upsert({
+            user_id: user?.id as string,
+            name: gmail.email,
+            email: gmail.email,
+            provider: 'gmail',
+            is_connected: true,
+          }, { onConflict: 'user_id' });
+          const { data: after } = await supabase
+            .from('email_configurations')
+            .select('*')
+            .eq('user_id', user?.id)
+            .order('created_at', { ascending: false })
+            .limit(10);
+          setItems(after || []);
+          setMode((after && after.length > 0) ? 'account' : 'choices');
+          return;
+        }
+      }
+      setMode(list.length > 0 ? 'account' : 'choices');
+      if (list.length > 0) {
+        const c = list[0] as any;
+        setFormData({
+          email: c.email || '',
+          password: c.password || '',
+          imap_host: c.imap_host || '',
+          imap_port: String(c.imap_port ?? '993'),
+          company_name: c.company_name || '',
+          activity_description: c.activity_description || '',
+          services_offered: c.services_offered || '',
+        });
+      }
+    } catch (err) {
+      console.error('Erreur de chargement:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // OAuth Gmail
+  const connectGmail = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-oauth-init`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ redirectUrl: window.location.origin }),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Échec de l\'initialisation Gmail');
+      }
+      const { authUrl } = await response.json();
+      const width = 600; const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      window.open(authUrl, 'Gmail OAuth', `width=${width},height=${height},left=${left},top=${top}`);
+
+      const handleMessage = async (event: MessageEvent) => {
+        if (event.data.type === 'gmail-connected') {
+          try {
+            // Créer/mettre à jour une ligne de configuration pour cet utilisateur
+            await supabase.from('email_configurations').upsert({
+              user_id: user?.id as string,
+              name: event.data.email || 'Gmail',
+              email: event.data.email || '',
+              provider: 'gmail',
+              is_connected: true,
+              company_name: null,
+              activity_description: null,
+              services_offered: null,
+            }, { onConflict: 'user_id' });
+          } catch (e) {
+            console.error('Upsert config Gmail après OAuth:', e);
+          }
+          await loadLatestConfig();
+          setMode('account');
+          window.removeEventListener('message', handleMessage);
+        }
+      };
+      window.addEventListener('message', handleMessage);
+    } catch (err) {
+      console.error('Erreur connexion Gmail:', err);
+      alert('Erreur lors de la connexion Gmail');
+    }
+  };
+
+  // OAuth Outlook
+  const connectOutlook = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert('Veuillez vous connecter avant de lier Outlook.');
+        return;
+      }
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/outlook-oauth-init`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            redirectUrl: window.location.origin,
+            userId: user?.id,
+            accessToken: session.access_token,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const message = (error && (error.error || error.message)) ? (error.error || error.message) : 'Échec de l\'initialisation Outlook';
+        console.error('Outlook OAuth init error:', error);
+        throw new Error(message);
+      }
+      const { authUrl } = await response.json();
+      const width = 600; const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      window.open(authUrl, 'Outlook OAuth', `width=${width},height=${height},left=${left},top=${top}`);
+
+      const handleMessage = async (event: MessageEvent) => {
+        if (event.data.type === 'outlook-connected') {
+          try {
+            await supabase.from('email_configurations').upsert({
+              user_id: user?.id as string,
+              name: event.data.email || 'Outlook',
+              email: event.data.email || '',
+              provider: 'outlook',
+              is_connected: true,
+              company_name: null,
+              activity_description: null,
+              services_offered: null,
+            }, { onConflict: 'user_id' });
+          } catch (e) {
+            console.error('Upsert config Outlook après OAuth:', e);
+          }
+          await loadLatestConfig();
+          setMode('account');
+          window.removeEventListener('message', handleMessage);
+        }
+      };
+      window.addEventListener('message', handleMessage);
+    } catch (err) {
+      console.error('Erreur connexion Outlook:', err);
+      const msg = (err as any)?.message || 'Erreur lors de la connexion Outlook';
+      alert(`Erreur lors de la connexion Outlook: ${msg}`);
+    }
+  };
+
+  const disconnectOutlook = async () => {
+    if (!user?.id) return;
+    try {
+      // Tente de supprimer le token Outlook (si les politiques RLS le permettent)
+      await supabase
+        .from('outlook_tokens')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Marque la configuration comme déconnectée côté UI/données
+      const { error: updateError } = await supabase
+        .from('email_configurations')
+        .update({ is_connected: false })
+        .eq('user_id', user.id);
+      if (updateError) throw updateError;
+
+      await loadLatestConfig();
+      alert('Compte Outlook déconnecté.');
+    } catch (err) {
+      console.error('Erreur déconnexion Outlook:', err);
+      alert('Impossible de déconnecter Outlook pour le moment.');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      // Upsert: une seule configuration par user_id (grâce à contrainte unique)
+      const upsertRes = await supabase.from('email_configurations').upsert({
+        user_id: user.id,
+        name: formData.company_name || formData.email,
+        email: formData.email,
+        provider: 'smtp_imap',
+        is_connected: true,
+        password: formData.password,
+        imap_host: formData.imap_host,
+        imap_port: parseInt(formData.imap_port),
+        imap_username: formData.email,
+        imap_password: formData.password,
+        company_name: formData.company_name,
+        activity_description: formData.activity_description,
+        services_offered: formData.services_offered,
+      }, { onConflict: 'user_id' });
+      if (upsertRes.error) throw upsertRes.error;
+
+      await loadLatestConfig();
+      setFormData({
+        email: '',
+        password: '',
+        imap_host: '',
+        imap_port: '993',
+        company_name: '',
+        activity_description: '',
+        services_offered: '',
+      });
+      setMode('account');
+      alert('Configuration enregistrée/mise à jour avec succès.');
+    } catch (err) {
+      console.error('Erreur enregistrement:', err);
+      alert("Une erreur est survenue lors de l'enregistrement");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!user?.id) return;
+    const confirmDelete = confirm('Supprimer votre configuration email ?');
+    if (!confirmDelete) return;
+    try {
+      const { error } = await supabase
+        .from('email_configurations')
+        .delete()
+        .eq('user_id', user.id);
+      if (error) throw error;
+      await loadLatestConfig();
+      setFormData({
+        email: '',
+        password: '',
+        imap_host: '',
+        imap_port: '993',
+        company_name: '',
+        activity_description: '',
+        services_offered: '',
+      });
+      setMode('choices');
+      alert('Configuration supprimée.');
+    } catch (err) {
+      console.error('Erreur suppression:', err);
+      alert('Impossible de supprimer la configuration');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#EF6855]"></div>
+      </div>
+    );
+  }
+
+  // CHOICES VIEW
+  if (mode === 'choices') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Mail className="w-6 h-6 text-[#EF6855]" />
+          <div>
+            <h2 className="text-2xl font-bold text-[#3D2817]">Configurations Email</h2>
+            <p className="text-gray-600 mt-1">Connectez un compte email</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-10 shadow-sm text-center border border-gray-200">
+          <p className="text-gray-600 mb-6">Choisissez une méthode de connexion</p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              type="button"
+              onClick={connectGmail}
+              className="px-6 py-3 bg-white border-2 border-[#EF6855] text-[#EF6855] rounded-lg hover:bg-orange-50 transition-colors"
+            >
+              + Gmail
+            </button>
+            <button
+              type="button"
+              onClick={connectOutlook}
+              className="px-6 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              + Outlook
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('imap_form')}
+              className="px-6 py-3 bg-[#EF6855] text-white rounded-lg hover:bg-[#d55a47] transition-colors"
+            >
+              + IMAP
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ACCOUNT VIEW (after configured)
+  if (mode === 'account') {
+    const cfg = items[0];
+    const providerLabel = cfg?.provider === 'gmail' ? 'Gmail' : cfg?.provider === 'outlook' ? 'Outlook' : 'IMAP';
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Mail className="w-6 h-6 text-[#EF6855]" />
+          <div>
+            <h2 className="text-2xl font-bold text-[#3D2817]">Compte configuré</h2>
+            <p className="text-gray-600 mt-1">Cliquez pour modifier ou supprimez</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {cfg?.is_connected ? (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 text-sm font-medium">
+                <CheckCircle className="w-4 h-4" />
+                Connecté
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-300 text-sm font-medium">
+                <span className="w-4 h-4 inline-block rounded-full bg-gray-400"></span>
+                Déconnecté
+              </div>
+            )}
+            <div className="text-left">
+              <div className="font-semibold text-[#3D2817]">{cfg?.email}</div>
+              <div className="text-sm text-gray-500">
+                {providerLabel}
+                {cfg?.imap_host ? ` · IMAP: ${cfg.imap_host}:${cfg.imap_port}` : ''}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            {cfg?.provider === 'smtp_imap' && (
+              <button
+                type="button"
+                onClick={() => setMode('imap_form')}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Modifier
+              </button>
+            )}
+            {cfg?.provider === 'outlook' && cfg?.is_connected && (
+              <button
+                type="button"
+                onClick={disconnectOutlook}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Déconnecter
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="px-4 py-2 border border-red-200 text-red-700 rounded-lg hover:bg-red-50"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // IMAP FORM VIEW
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Mail className="w-6 h-6 text-[#EF6855]" />
+        <div>
+          <h2 className="text-2xl font-bold text-[#3D2817]">Configuration Email</h2>
+          <p className="text-gray-600 mt-1">Configurez vos paramètres de messagerie</p>
+        </div>
+      </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-[#EF6855]">
+        <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+            <h3 className="font-semibold text-gray-800 mb-3">Informations de connexion</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Adresse email</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  placeholder="exemple@entreprise.com"
+                />
+              </div>
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                  <input
+                    type="password"
+                    required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
+          {/* Section SMTP supprimée selon la demande */}
+
+          <div>
+            <h3 className="font-semibold text-gray-800 mb-3">Configuration IMAP</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Serveur IMAP</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.imap_host}
+                    onChange={(e) => setFormData({ ...formData, imap_host: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  placeholder="imap.exemple.com"
+                  />
+                </div>
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Port IMAP</label>
+                  <input
+                    type="number"
+                    required
+                    value={formData.imap_port}
+                    onChange={(e) => setFormData({ ...formData, imap_port: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  />
+                </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-gray-800 mb-3">Informations de l'entreprise</h3>
+            <div className="grid grid-cols-1 gap-4">
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nom de l'entreprise</label>
+                  <input
+                    type="text"
+                  value={formData.company_name}
+                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  placeholder="Nom de votre entreprise"
+                  />
+                </div>
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description de l'activité</label>
+                <textarea
+                  value={formData.activity_description}
+                  onChange={(e) => setFormData({ ...formData, activity_description: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  placeholder="Décrivez l'activité principale..."
+                  rows={3}
+                  />
+                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Services proposés</label>
+                <textarea
+                  value={formData.services_offered}
+                  onChange={(e) => setFormData({ ...formData, services_offered: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent"
+                  placeholder="Listez vos services..."
+                  rows={3}
+                />
+              </div>
+            </div>
+        </div>
+
+          <div className="pt-2">
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className={`flex-1 bg-[#EF6855] text-white py-3 rounded-lg font-medium hover:bg-[#d55a47] transition-colors ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {saving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="px-6 py-3 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </form>
+        </div>
+
+      {items.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="px-4 py-3 border-b font-medium text-gray-700">Dernières configurations</div>
+          <ul className="divide-y">
+            {items.map((row) => (
+              <li key={row.id} className="px-4 py-3 text-sm text-gray-700 flex items-center justify-between">
+                <span className="truncate">{row.email}</span>
+                <span className="text-gray-500">
+                  {new Date(row.created_at).toLocaleString('fr-FR')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
