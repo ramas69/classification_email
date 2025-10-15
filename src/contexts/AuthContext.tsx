@@ -20,12 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Session loaded:', session);
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
-    }).catch((error) => {
-      console.error('Error loading session:', error);
       setLoading(false);
     });
 
@@ -45,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!existingProfile) {
             await supabase.from('profiles').insert({
               id: session.user.id,
+              email: session.user.email || '',
+              full_name: session.user.user_metadata?.full_name || null,
             });
           }
         }
