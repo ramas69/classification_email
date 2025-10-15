@@ -13,6 +13,7 @@ export function Settings() {
   const [isActive, setIsActive] = useState(false);
   const [showForm, setShowForm] = useState(true);
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [provider, setProvider] = useState<string>('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,10 +33,10 @@ export function Settings() {
 
     setLoading(true);
 
-    const { data: profileData } = await supabase
-      .from('profiles')
+    const { data: emailConfig } = await supabase
+      .from('email_configurations')
       .select('*')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .maybeSingle();
 
     const { data: webhookData } = await supabase
@@ -44,20 +45,22 @@ export function Settings() {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    setProvider(emailConfig?.provider || '');
     setFormData({
-      email: profileData?.email || '',
+      email: emailConfig?.email || '',
       password: '',
-      imapHost: profileData?.imap_host || '',
-      imapPort: profileData?.imap_port || 993,
-      companyName: profileData?.company_name || '',
-      activityDescription: profileData?.activity_description || '',
-      services: profileData?.services || '',
+      imapHost: emailConfig?.imap_host || '',
+      imapPort: emailConfig?.imap_port || 993,
+      companyName: emailConfig?.company_name || '',
+      activityDescription: emailConfig?.activity_description || '',
+      services: emailConfig?.services_offered || '',
     });
 
-    setIsConfigured(profileData?.is_configured || false);
-    setIsActive(profileData?.is_active || false);
+    const configured = !!emailConfig;
+    setIsConfigured(configured);
+    setIsActive(emailConfig?.is_active || false);
     setWebhookUrl(webhookData?.n8n_webhook_url || '');
-    setShowForm(!profileData?.is_configured);
+    setShowForm(!configured);
 
     setLoading(false);
   };
@@ -69,20 +72,36 @@ export function Settings() {
     setSaving(true);
 
     try {
-      await supabase
-        .from('profiles')
-        .update({
-          email: formData.email,
-          email_password: formData.password,
-          imap_host: formData.imapHost,
-          imap_port: formData.imapPort,
-          company_name: formData.companyName,
-          activity_description: formData.activityDescription,
-          services: formData.services,
-          is_configured: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+      const isOAuthProvider = provider === 'gmail' || provider === 'outlook';
+
+      if (isOAuthProvider) {
+        // Pour Gmail/Outlook, ne mettre à jour que les infos entreprise
+        await supabase
+          .from('email_configurations')
+          .update({
+            company_name: formData.companyName,
+            activity_description: formData.activityDescription,
+            services_offered: formData.services,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Pour IMAP, mise à jour complète
+        await supabase
+          .from('email_configurations')
+          .upsert({
+            user_id: user.id,
+            email: formData.email,
+            password: formData.password,
+            imap_host: formData.imapHost,
+            imap_port: formData.imapPort,
+            company_name: formData.companyName,
+            activity_description: formData.activityDescription,
+            services_offered: formData.services,
+            provider: 'imap',
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+      }
 
       setIsConfigured(true);
       setShowForm(false);
@@ -127,12 +146,12 @@ export function Settings() {
       }
 
       await supabase
-        .from('profiles')
+        .from('email_configurations')
         .update({
           is_active: true,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
 
       setIsActive(true);
       alert('Configuration activée avec succès ! Le workflow N8N a été déclenché.');
@@ -153,6 +172,8 @@ export function Settings() {
   }
 
   if (!showForm && isConfigured) {
+    const isOAuthProvider = provider === 'gmail' || provider === 'outlook';
+
     return (
       <div className="max-w-4xl">
         <div className="bg-gradient-to-r from-[#EF6855] to-[#F9A459] rounded-2xl p-8 text-white mb-6">
@@ -168,25 +189,44 @@ export function Settings() {
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
-          <h3 className="text-xl font-bold text-[#3D2817] mb-6">Informations de connexion</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <p className="text-sm text-gray-500">Adresse email</p>
-              <p className="font-medium text-gray-900">{formData.email}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Mot de passe</p>
-              <p className="font-medium text-gray-900">••••••••</p>
-            </div>
-          </div>
+          {!isOAuthProvider && (
+            <>
+              <h3 className="text-xl font-bold text-[#3D2817] mb-6">Informations de connexion</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-sm text-gray-500">Adresse email</p>
+                  <p className="font-medium text-gray-900">{formData.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Mot de passe</p>
+                  <p className="font-medium text-gray-900">••••••••</p>
+                </div>
+              </div>
 
-          <h3 className="text-xl font-bold text-[#3D2817] mb-6 mt-8">Configuration serveur IMAP</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <p className="text-sm text-gray-500">Serveur IMAP</p>
-              <p className="font-medium text-gray-900">{formData.imapHost}:{formData.imapPort}</p>
+              <h3 className="text-xl font-bold text-[#3D2817] mb-6 mt-8">Configuration serveur IMAP</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-sm text-gray-500">Serveur IMAP</p>
+                  <p className="font-medium text-gray-900">{formData.imapHost}:{formData.imapPort}</p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isOAuthProvider && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm text-blue-800">
+                  <div className="font-semibold mb-1">Compte {provider === 'gmail' ? 'Gmail' : 'Outlook'} connecté</div>
+                  <div>Email: {formData.email}</div>
+                  <div className="mt-1">Les paramètres de connexion sont gérés automatiquement via OAuth.</div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           <h3 className="text-xl font-bold text-[#3D2817] mb-6 mt-8">Informations de l'entreprise</h3>
           <div className="space-y-4">
@@ -248,6 +288,8 @@ export function Settings() {
     );
   }
 
+  const isOAuthProvider = provider === 'gmail' || provider === 'outlook';
+
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl">
       <div className="bg-gradient-to-r from-[#EF6855] to-[#F9A459] rounded-2xl p-8 text-white mb-6">
@@ -256,93 +298,113 @@ export function Settings() {
             <Mail className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold mb-1">Configuration Email</h2>
-            <p className="text-white/90">Configurez vos paramètres de messagerie</p>
+            <h2 className="text-3xl font-bold mb-1">
+              {isOAuthProvider ? 'Modifier les informations' : 'Configuration Email'}
+            </h2>
+            <p className="text-white/90">
+              {isOAuthProvider ? 'Mettez à jour les informations de votre entreprise' : 'Configurez vos paramètres de messagerie'}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Mail className="w-5 h-5 text-[#EF6855]" />
-          <h3 className="text-xl font-bold text-[#3D2817]">Informations de connexion</h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Adresse email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none"
-              placeholder="exemple@entreprise.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mot de passe
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none pr-12"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+      {isOAuthProvider && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="text-sm text-blue-800">
+              <div className="font-semibold mb-1">Compte {provider === 'gmail' ? 'Gmail' : 'Outlook'} connecté</div>
+              <div>Vous pouvez uniquement modifier les informations de votre entreprise. Les paramètres de connexion {provider === 'gmail' ? 'Gmail' : 'Outlook'} sont gérés automatiquement.</div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Bloc SMTP supprimé conformément à la demande */}
+      {!isOAuthProvider && (
+        <>
+          <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Mail className="w-5 h-5 text-[#EF6855]" />
+              <h3 className="text-xl font-bold text-[#3D2817]">Informations de connexion</h3>
+            </div>
 
-      <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Server className="w-5 h-5 text-[#EF6855]" />
-          <h3 className="text-xl font-bold text-[#3D2817]">Configuration IMAP</h3>
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Adresse email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none"
+                  placeholder="exemple@entreprise.com"
+                  required
+                />
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Serveur IMAP
-            </label>
-            <input
-              type="text"
-              value={formData.imapHost}
-              onChange={(e) => setFormData({ ...formData, imapHost: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none"
-              placeholder="imap.exemple.com"
-            />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mot de passe
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none pr-12"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Port IMAP
-            </label>
-            <input
-              type="number"
-              value={formData.imapPort}
-              onChange={(e) => setFormData({ ...formData, imapPort: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none"
-              placeholder="993"
-            />
+          <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Server className="w-5 h-5 text-[#EF6855]" />
+              <h3 className="text-xl font-bold text-[#3D2817]">Configuration IMAP</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Serveur IMAP
+                </label>
+                <input
+                  type="text"
+                  value={formData.imapHost}
+                  onChange={(e) => setFormData({ ...formData, imapHost: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none"
+                  placeholder="imap.exemple.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Port IMAP
+                </label>
+                <input
+                  type="number"
+                  value={formData.imapPort}
+                  onChange={(e) => setFormData({ ...formData, imapPort: parseInt(e.target.value) })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none"
+                  placeholder="993"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
         <div className="flex items-center gap-2 mb-6">
