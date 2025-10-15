@@ -462,7 +462,7 @@ export function EmailConfigurations() {
                 <div className="font-semibold text-[#3D2817]">{cfg?.email}</div>
                 <div className="text-sm text-gray-500">
                   {providerLabel}
-                  {cfg?.imap_host ? ` · IMAP: ${cfg.imap_host}:${cfg.imap_port}` : ''}
+                  {cfg?.provider === 'smtp_imap' && cfg?.imap_host ? ` · IMAP: ${cfg.imap_host}:${cfg.imap_port}` : ''}
                 </div>
               </div>
             </div>
