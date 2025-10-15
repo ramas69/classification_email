@@ -332,7 +332,8 @@ export function EmailConfigurations() {
       alert('Configuration enregistrée/mise à jour avec succès.');
     } catch (err) {
       console.error('Erreur enregistrement:', err);
-      alert("Une erreur est survenue lors de l'enregistrement");
+      const errorMessage = err instanceof Error ? err.message : JSON.stringify(err);
+      alert(`Une erreur est survenue lors de l'enregistrement: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
