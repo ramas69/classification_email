@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Settings as SettingsIcon, Link, Mail } from 'lucide-react';
+import { LogOut, Settings as SettingsIcon, Mail } from 'lucide-react';
 import { Settings } from './Settings';
-import { WebhookSettings } from './WebhookSettings';
 import { EmailConfigurations } from './EmailConfigurations';
 import { supabase } from '../lib/supabase';
 
-type ActiveView = 'home' | 'settings' | 'webhook' | 'email-configs';
+type ActiveView = 'home' | 'settings' | 'email-configs';
 
 export function Dashboard() {
   const { user, signOut } = useAuth();
@@ -180,17 +179,6 @@ export function Dashboard() {
                 <SettingsIcon className="w-4 h-4" />
                 Configuration
               </button>
-              <button
-                onClick={() => setActiveView('webhook')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeView === 'webhook'
-                    ? 'bg-[#EF6855] text-white'
-                    : 'text-gray-600 hover:text-[#EF6855]'
-                }`}
-              >
-                <Link className="w-4 h-4" />
-                Webhook N8N
-              </button>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -302,20 +290,6 @@ export function Dashboard() {
               </p>
             </div>
             <Settings />
-          </>
-        )}
-
-        {activeView === 'webhook' && (
-          <>
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-[#3D2817] mb-2">
-                Webhook N8N
-              </h1>
-              <p className="text-gray-600">
-                Gérez votre webhook pour automatiser vos workflows
-              </p>
-            </div>
-            <WebhookSettings />
           </>
         )}
       </main>
