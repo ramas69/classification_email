@@ -277,13 +277,6 @@ export function Settings() {
           )}
         </div>
 
-        {!webhookUrl && !isActive && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              Vous devez d'abord configurer votre webhook N8N dans l'onglet "Webhook" avant d'activer la configuration.
-            </p>
-          </div>
-        )}
       </div>
     );
   }
