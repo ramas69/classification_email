@@ -159,7 +159,6 @@ export function EmailConfigurations() {
       const handleMessage = async (event: MessageEvent) => {
         if (event.data.type === 'gmail-connected') {
           try {
-            // Créer/mettre à jour une ligne de configuration pour cet utilisateur
             await supabase.from('email_configurations').upsert({
               user_id: user?.id as string,
               name: event.data.email || 'Gmail',
