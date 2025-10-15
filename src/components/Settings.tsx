@@ -32,10 +32,10 @@ export function Settings() {
 
     setLoading(true);
 
-    const { data: configData } = await supabase
-      .from('email_configurations')
+    const { data: profileData } = await supabase
+      .from('profiles')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .maybeSingle();
 
     const { data: webhookData } = await supabase
@@ -44,22 +44,21 @@ export function Settings() {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (configData) {
-      setFormData({
-        email: configData.email || '',
-        password: '',
-        imapHost: configData.imap_host || '',
-        imapPort: configData.imap_port || 993,
-        companyName: configData.company_name || '',
-        activityDescription: configData.activity_description || '',
-        services: configData.services_offered || '',
-      });
-      setIsConfigured(!!configData.email);
-      setIsActive(configData.is_connected || false);
-      setShowForm(!configData.email);
-    }
+    setFormData({
+      email: profileData?.email || '',
+      password: '',
+      imapHost: profileData?.imap_host || '',
+      imapPort: profileData?.imap_port || 993,
+      companyName: profileData?.company_name || '',
+      activityDescription: profileData?.activity_description || '',
+      services: profileData?.services || '',
+    });
 
+    setIsConfigured(profileData?.is_configured || false);
+    setIsActive(profileData?.is_active || false);
     setWebhookUrl(webhookData?.n8n_webhook_url || '');
+    setShowForm(!profileData?.is_configured);
+
     setLoading(false);
   };
 
@@ -70,30 +69,23 @@ export function Settings() {
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('email_configurations')
-        .upsert({
-          user_id: user.id,
-          name: formData.companyName || formData.email,
+      await supabase
+        .from('profiles')
+        .update({
           email: formData.email,
-          password: formData.password,
+          email_password: formData.password,
           imap_host: formData.imapHost,
           imap_port: formData.imapPort,
-          imap_username: formData.email,
-          imap_password: formData.password,
           company_name: formData.companyName,
           activity_description: formData.activityDescription,
-          services_offered: formData.services,
-          provider: 'smtp_imap',
-          is_connected: true,
+          services: formData.services,
+          is_configured: true,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
+        })
+        .eq('id', user.id);
 
       setIsConfigured(true);
       setShowForm(false);
-      alert('Configuration enregistrée avec succès !');
     } catch (error) {
       console.error('Error saving settings:', error);
       alert('Erreur lors de l\'enregistrement');
@@ -135,12 +127,12 @@ export function Settings() {
       }
 
       await supabase
-        .from('email_configurations')
+        .from('profiles')
         .update({
-          is_connected: true,
+          is_active: true,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id);
+        .eq('id', user.id);
 
       setIsActive(true);
       alert('Configuration activée avec succès ! Le workflow N8N a été déclenché.');
@@ -314,6 +306,8 @@ export function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Bloc SMTP supprimé conformément à la demande */}
 
       <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
         <div className="flex items-center gap-2 mb-6">

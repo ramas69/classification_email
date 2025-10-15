@@ -159,7 +159,6 @@ export function EmailConfigurations() {
       const handleMessage = async (event: MessageEvent) => {
         if (event.data.type === 'gmail-connected') {
           try {
-            // Créer/mettre à jour une ligne de configuration pour cet utilisateur
             await supabase.from('email_configurations').upsert({
               user_id: user?.id as string,
               name: event.data.email || 'Gmail',
@@ -332,8 +331,7 @@ export function EmailConfigurations() {
       alert('Configuration enregistrée/mise à jour avec succès.');
     } catch (err) {
       console.error('Erreur enregistrement:', err);
-      const errorMessage = err instanceof Error ? err.message : JSON.stringify(err);
-      alert(`Une erreur est survenue lors de l'enregistrement: ${errorMessage}`);
+      alert("Une erreur est survenue lors de l'enregistrement");
     } finally {
       setSaving(false);
     }
