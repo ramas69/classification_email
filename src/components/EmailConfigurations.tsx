@@ -282,8 +282,8 @@ export function EmailConfigurations() {
       const cfg = items[0];
       const isEditingGmail = cfg?.provider === 'gmail';
 
-      if (isEditingGmail) {
-        // Pour Gmail, mise à jour uniquement des infos entreprise
+      if (isEditingGmail || isEditingOutlook) {
+        // Pour Gmail/Outlook, mise à jour uniquement des infos entreprise
         const { error } = await supabase
           .from('email_configurations')
           .update({
@@ -293,7 +293,7 @@ export function EmailConfigurations() {
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id)
-          .eq('provider', 'gmail');
+          .eq('provider', isEditingGmail ? 'gmail' : 'outlook');
 
         if (error) throw error;
       } else {
@@ -317,7 +317,7 @@ export function EmailConfigurations() {
       }
 
       await loadLatestConfig();
-      if (!isEditingGmail) {
+      if (!isEditingGmail && !isEditingOutlook) {
         setFormData({
           email: '',
           password: '',
@@ -555,6 +555,7 @@ export function EmailConfigurations() {
   // IMAP FORM VIEW
   const cfg = items[0];
   const isEditingGmail = cfg?.provider === 'gmail';
+  const isEditingOutlook = cfg?.provider === 'outlook';
 
   return (
     <div className="space-y-6">
@@ -562,17 +563,17 @@ export function EmailConfigurations() {
         <Mail className="w-6 h-6 text-[#EF6855]" />
         <div>
           <h2 className="text-2xl font-bold text-[#3D2817]">
-            {isEditingGmail ? 'Modifier les informations' : 'Configuration Email'}
+            {(isEditingGmail || isEditingOutlook) ? 'Modifier les informations' : 'Configuration Email'}
           </h2>
           <p className="text-gray-600 mt-1">
-            {isEditingGmail ? 'Mettez à jour les informations de votre entreprise' : 'Configurez vos paramètres de messagerie'}
+            {(isEditingGmail || isEditingOutlook) ? 'Mettez à jour les informations de votre entreprise' : 'Configurez vos paramètres de messagerie'}
           </p>
         </div>
       </div>
 
         <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-[#EF6855]">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {!isEditingGmail && (
+          {!isEditingGmail && !isEditingOutlook && (
             <>
               <div>
                 <h3 className="font-semibold text-gray-800 mb-3">Informations de connexion</h3>
@@ -630,15 +631,15 @@ export function EmailConfigurations() {
             </>
           )}
 
-          {isEditingGmail && (
+          {(isEditingGmail || isEditingOutlook) && (
             <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="text-sm text-blue-800">
-                  <div className="font-semibold mb-1">Compte Gmail connecté</div>
-                  <div>Vous pouvez uniquement modifier les informations de votre entreprise. Les paramètres de connexion Gmail sont gérés automatiquement.</div>
+                  <div className="font-semibold mb-1">Compte {isEditingGmail ? 'Gmail' : 'Outlook'} connecté</div>
+                  <div>Vous pouvez uniquement modifier les informations de votre entreprise. Les paramètres de connexion {isEditingGmail ? 'Gmail' : 'Outlook'} sont gérés automatiquement.</div>
                 </div>
               </div>
             </div>
@@ -689,7 +690,7 @@ export function EmailConfigurations() {
               >
                 {saving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
-              {isEditingGmail ? (
+              {(isEditingGmail || isEditingOutlook) ? (
                 <button
                   type="button"
                   onClick={() => setMode('account')}
