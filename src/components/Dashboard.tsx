@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Settings as SettingsIcon, Mail } from 'lucide-react';
+import { LogOut, Settings as SettingsIcon, Link, Mail } from 'lucide-react';
 import { Settings } from './Settings';
+import { WebhookSettings } from './WebhookSettings';
 import { EmailConfigurations } from './EmailConfigurations';
-import { CompanyInfoForm } from './CompanyInfoForm';
 import { supabase } from '../lib/supabase';
 
-type ActiveView = 'home' | 'settings' | 'email-configs' | 'company-info';
+type ActiveView = 'home' | 'settings' | 'webhook' | 'email-configs';
 
 export function Dashboard() {
   const { user, signOut } = useAuth();
@@ -14,7 +14,6 @@ export function Dashboard() {
   const [gmailConnected, setGmailConnected] = useState(false);
   const [gmailEmail, setGmailEmail] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
 
   useEffect(() => {
     checkGmailConnection();
@@ -24,12 +23,10 @@ export function Dashboard() {
         setGmailConnected(true);
         setGmailEmail(event.data.email);
         setIsConnecting(false);
-        setActiveView('email-configs');
       } else if (event.data.type === 'outlook-connected') {
         setGmailConnected(true);
         setGmailEmail(event.data.email);
         setIsConnecting(false);
-        setActiveView('email-configs');
       }
     };
 
@@ -47,20 +44,7 @@ export function Dashboard() {
     if (data) {
       setGmailConnected(true);
       setGmailEmail(data.email);
-      await checkCompanyInfo();
     }
-  };
-
-  const checkCompanyInfo = async () => {
-    const { data } = await supabase
-      .from('email_configurations')
-      .select('company_name, activity_description, services_offered')
-      .eq('user_id', user?.id)
-      .eq('provider', 'gmail')
-      .maybeSingle();
-
-    const hasCompanyInfo = data?.company_name || data?.activity_description || data?.services_offered;
-    setShowCompanyForm(!hasCompanyInfo);
   };
 
   const connectGmail = async () => {
@@ -196,6 +180,17 @@ export function Dashboard() {
                 <SettingsIcon className="w-4 h-4" />
                 Configuration
               </button>
+              <button
+                onClick={() => setActiveView('webhook')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeView === 'webhook'
+                    ? 'bg-[#EF6855] text-white'
+                    : 'text-gray-600 hover:text-[#EF6855]'
+                }`}
+              >
+                <Link className="w-4 h-4" />
+                Webhook N8N
+              </button>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -222,30 +217,6 @@ export function Dashboard() {
                 Gérez vos emails et automatisez vos réponses
               </p>
             </div>
-
-            {gmailConnected && showCompanyForm && (
-              <div className="mb-6 bg-[#EF6855] text-white rounded-2xl p-6 shadow-lg">
-                <div className="flex items-start gap-4">
-                  <div className="bg-white/20 p-3 rounded-lg">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg mb-1">Configuration requise</h3>
-                    <p className="text-white/90 mb-4">
-                      Pour tirer le meilleur parti de Hall IA, veuillez renseigner les informations de votre entreprise.
-                    </p>
-                    <button
-                      onClick={() => setActiveView('company-info')}
-                      className="bg-white text-[#EF6855] px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      Compléter maintenant
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="bg-white rounded-2xl p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-[#3D2817] mb-4">
@@ -334,17 +305,17 @@ export function Dashboard() {
           </>
         )}
 
-        {activeView === 'company-info' && (
+        {activeView === 'webhook' && (
           <>
             <div className="mb-8">
               <h1 className="text-4xl font-bold text-[#3D2817] mb-2">
-                Configuration de votre entreprise
+                Webhook N8N
               </h1>
               <p className="text-gray-600">
-                Complétez les informations pour personnaliser l'IA
+                Gérez votre webhook pour automatiser vos workflows
               </p>
             </div>
-            <CompanyInfoForm />
+            <WebhookSettings />
           </>
         )}
       </main>

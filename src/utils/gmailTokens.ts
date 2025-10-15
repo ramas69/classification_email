@@ -81,12 +81,4 @@ export async function ensureValidAccessToken(): Promise<{ access_token: string; 
   return response.json();
 }
 
-export async function getValidGmailAccessToken(): Promise<string> {
-  const tokenData = await ensureValidAccessToken();
-  if (!tokenData) {
-    throw new Error('Aucun token Gmail disponible. Veuillez reconnecter votre compte Gmail.');
-  }
-  return tokenData.access_token;
-}
-
 
