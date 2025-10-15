@@ -24,12 +24,12 @@ export function Dashboard() {
         setGmailConnected(true);
         setGmailEmail(event.data.email);
         setIsConnecting(false);
-        setActiveView('email-configs');
+        setShowCompanyForm(true);
+        setActiveView('company-info');
       } else if (event.data.type === 'outlook-connected') {
         setGmailConnected(true);
         setGmailEmail(event.data.email);
         setIsConnecting(false);
-        setActiveView('email-configs');
       }
     };
 
