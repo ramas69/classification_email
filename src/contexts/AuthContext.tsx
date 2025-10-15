@@ -41,8 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!existingProfile) {
             await supabase.from('profiles').insert({
               id: session.user.id,
-              email: session.user.email || '',
-              full_name: session.user.user_metadata?.full_name || null,
             });
           }
         }
