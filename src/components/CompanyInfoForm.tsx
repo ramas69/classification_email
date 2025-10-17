@@ -53,6 +53,12 @@ export function CompanyInfoForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.company_name.trim() || !formData.activity_description.trim() || !formData.services_offered.trim()) {
+      alert('Tous les champs sont obligatoires');
+      return;
+    }
+
     setLoading(true);
     setSaved(false);
 
@@ -117,6 +123,7 @@ export function CompanyInfoForm() {
             value={formData.company_name}
             onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
             placeholder="Ex: Hall IA"
+            required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent transition-all"
           />
         </div>
@@ -131,6 +138,7 @@ export function CompanyInfoForm() {
             onChange={(e) => setFormData({ ...formData, activity_description: e.target.value })}
             placeholder="Décrivez brièvement votre activité, votre secteur d'activité, votre mission..."
             rows={4}
+            required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent transition-all resize-none"
           />
         </div>
@@ -145,6 +153,7 @@ export function CompanyInfoForm() {
             onChange={(e) => setFormData({ ...formData, services_offered: e.target.value })}
             placeholder="Jean DUPONT&#10;06 12 34 56 78&#10;15 rue de la Paix, 75001 Paris&#10;www.monentreprise.fr"
             rows={4}
+            required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent transition-all resize-none"
           />
         </div>
