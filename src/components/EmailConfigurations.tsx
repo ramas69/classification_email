@@ -619,7 +619,7 @@ export function EmailConfigurations() {
                   />
                 </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Services proposés</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Signature</label>
                 <textarea
                   value={formData.services_offered}
                   onChange={(e) => setFormData({ ...formData, services_offered: e.target.value })}
