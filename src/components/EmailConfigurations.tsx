@@ -468,7 +468,7 @@ export function EmailConfigurations() {
                 )}
                 {cfg?.services_offered && (
                   <div>
-                    <div className="text-sm font-medium text-gray-500 mb-1">Services proposés</div>
+                    <div className="text-sm font-medium text-gray-500 mb-1">Signature</div>
                     <div className="text-gray-900 whitespace-pre-wrap">{cfg.services_offered}</div>
                   </div>
                 )}
