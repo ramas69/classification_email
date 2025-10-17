@@ -376,6 +376,9 @@ export function EmailConfigurations() {
 
   // CHOICES VIEW
   if (mode === 'choices') {
+    const hasGmail = items.some(c => c.provider === 'gmail' && c.is_connected);
+    const hasOutlook = items.some(c => c.provider === 'outlook' && c.is_connected);
+
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -391,7 +394,12 @@ export function EmailConfigurations() {
             <button
               type="button"
               onClick={connectGmail}
-              className="flex items-center gap-3 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-lg hover:border-[#EF6855] hover:shadow-md transition-all"
+              disabled={hasGmail}
+              className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
+                hasGmail
+                  ? 'bg-green-50 border-2 border-green-200 text-green-700 cursor-not-allowed'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#EF6855] hover:shadow-md'
+              }`}
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -399,17 +407,36 @@ export function EmailConfigurations() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              <span className="font-medium">Connecter Gmail</span>
+              {hasGmail ? (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-medium">Connecté</span>
+                </>
+              ) : (
+                <span className="font-medium">Connecter Gmail</span>
+              )}
             </button>
             <button
               type="button"
               onClick={connectOutlook}
-              className="flex items-center gap-3 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-lg hover:border-blue-600 hover:shadow-md transition-all"
+              disabled={hasOutlook}
+              className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
+                hasOutlook
+                  ? 'bg-green-50 border-2 border-green-200 text-green-700 cursor-not-allowed'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-600 hover:shadow-md'
+              }`}
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0078D4">
                 <path d="M22 3H2C.9 3 0 3.9 0 5v14c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H2V8l10 6 10-6v11z"/>
               </svg>
-              <span className="font-medium">Connecter Outlook</span>
+              {hasOutlook ? (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-medium">Connecté</span>
+                </>
+              ) : (
+                <span className="font-medium">Connecter Outlook</span>
+              )}
             </button>
             <button
               type="button"
