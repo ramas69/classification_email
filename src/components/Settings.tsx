@@ -439,9 +439,9 @@ export function Settings() {
             <textarea
               value={formData.services}
               onChange={(e) => setFormData({ ...formData, services: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none resize-none whitespace-pre-wrap"
               rows={4}
-              placeholder="Cordialement,\nJean Dupont\nDirecteur Commercial\nTél: +33 6 12 34 56 78\nwww.monentreprise.com"
+              placeholder={"Jean Dupont\nDirecteur Commercial\n+33 6 12 34 56 78\nwww.monentreprise.com"}
             />
           </div>
         </div>
