@@ -418,25 +418,13 @@ export function EmailConfigurations() {
             </button>
             <button
               type="button"
-              onClick={connectOutlook}
-              disabled={hasOutlook}
-              className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
-                hasOutlook
-                  ? 'bg-green-50 border-2 border-green-200 text-green-700 cursor-not-allowed'
-                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-600 hover:shadow-md'
-              }`}
+              disabled
+              className="flex items-center gap-3 px-6 py-3 rounded-lg bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed opacity-60"
             >
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0078D4">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M22 3H2C.9 3 0 3.9 0 5v14c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H2V8l10 6 10-6v11z"/>
               </svg>
-              {hasOutlook ? (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="font-medium">Connecté</span>
-                </>
-              ) : (
-                <span className="font-medium">Connecter Outlook</span>
-              )}
+              <span className="font-medium">Outlook (V2)</span>
             </button>
             <button
               type="button"
