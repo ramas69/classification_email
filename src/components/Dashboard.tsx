@@ -185,17 +185,6 @@ export function Dashboard() {
                 <Mail className="w-4 h-4" />
                 Emails
               </button>
-              <button
-                onClick={() => setActiveView('settings')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeView === 'settings'
-                    ? 'bg-[#EF6855] text-white'
-                    : 'text-gray-600 hover:text-[#EF6855]'
-                }`}
-              >
-                <SettingsIcon className="w-4 h-4" />
-                Configuration
-              </button>
             </nav>
           </div>
           <div className="flex items-center gap-4">
