@@ -239,7 +239,7 @@ export function Settings() {
               <p className="font-medium text-gray-900">{formData.activityDescription || 'Non renseigné'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Signature</p>
+              <p className="text-sm text-gray-500">Services proposés</p>
               <p className="font-medium text-gray-900">{formData.services || 'Non renseigné'}</p>
             </div>
           </div>
@@ -434,14 +434,14 @@ export function Settings() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Signature
+              Services proposés
             </label>
             <textarea
               value={formData.services}
               onChange={(e) => setFormData({ ...formData, services: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none resize-none whitespace-pre-wrap"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EF6855] focus:border-transparent outline-none resize-none"
               rows={4}
-              placeholder={"Jean Dupont\nDirecteur Commercial\n+33 6 12 34 56 78\nwww.monentreprise.com"}
+              placeholder="Listez les services offerts par votre entreprise..."
             />
           </div>
         </div>
