@@ -124,7 +124,7 @@ export function CompanyInfoForm() {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
             <FileText className="w-4 h-4 text-[#EF6855]" />
-            Description de l'activité
+            Description de l'activité et vos offres ou services
           </label>
           <textarea
             value={formData.activity_description}
