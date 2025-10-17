@@ -434,7 +434,7 @@ export function Settings() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Services proposés
+              Signature
             </label>
             <textarea
               value={formData.services}
