@@ -106,46 +106,6 @@ export function Dashboard() {
     }
   };
 
-  const connectOutlook = async () => {
-    setIsConnecting(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/outlook-oauth-init`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ redirectUrl: window.location.origin }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to initiate Outlook connection');
-      }
-
-      const { authUrl } = await response.json();
-
-      const width = 600;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
-
-      window.open(
-        authUrl,
-        'Outlook OAuth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-    } catch (error) {
-      console.error('Error connecting Outlook:', error);
-      setIsConnecting(false);
-    }
-  };
 
   const disconnectGmail = async () => {
     await supabase
@@ -281,10 +241,10 @@ export function Dashboard() {
 
                 <button
                   type="button"
-                  onClick={connectOutlook}
-                  className="w-full bg-white border-2 border-gray-200 text-gray-700 py-4 rounded-lg font-medium flex items-center justify-center gap-3 hover:border-[#EF6855] hover:shadow-md transition-all"
+                  disabled
+                  className="w-full bg-gray-100 border-2 border-gray-200 text-gray-400 py-4 rounded-lg font-medium flex items-center justify-center gap-3 cursor-not-allowed opacity-60"
                 >
-                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0078D4">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M22 3H2C.9 3 0 3.9 0 5v14c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H2V8l10 6 10-6v11z"/>
                   </svg>
                   Connecter Outlook

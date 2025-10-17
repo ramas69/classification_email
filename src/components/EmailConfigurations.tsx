@@ -185,70 +185,6 @@ export function EmailConfigurations() {
     }
   };
 
-  // OAuth Outlook
-  const connectOutlook = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert('Veuillez vous connecter avant de lier Outlook.');
-        return;
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/outlook-oauth-init`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            redirectUrl: window.location.origin,
-            userId: user?.id,
-            accessToken: session.access_token,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        const message = (error && (error.error || error.message)) ? (error.error || error.message) : 'Échec de l\'initialisation Outlook';
-        console.error('Outlook OAuth init error:', error);
-        throw new Error(message);
-      }
-      const { authUrl } = await response.json();
-      const width = 600; const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
-      window.open(authUrl, 'Outlook OAuth', `width=${width},height=${height},left=${left},top=${top}`);
-
-      const handleMessage = async (event: MessageEvent) => {
-        if (event.data.type === 'outlook-connected') {
-          try {
-            await supabase.from('email_configurations').upsert({
-              user_id: user?.id as string,
-              name: event.data.email || 'Outlook',
-              email: event.data.email || '',
-              provider: 'outlook',
-              is_connected: true,
-              company_name: null,
-              activity_description: null,
-              services_offered: null,
-            }, { onConflict: 'user_id' });
-          } catch (e) {
-            console.error('Upsert config Outlook après OAuth:', e);
-          }
-          await loadLatestConfig();
-          setMode('account');
-          window.removeEventListener('message', handleMessage);
-        }
-      };
-      window.addEventListener('message', handleMessage);
-    } catch (err) {
-      console.error('Erreur connexion Outlook:', err);
-      const msg = (err as any)?.message || 'Erreur lors de la connexion Outlook';
-      alert(`Erreur lors de la connexion Outlook: ${msg}`);
-    }
-  };
 
   const disconnectOutlook = async () => {
     if (!user?.id) return;
@@ -377,7 +313,6 @@ export function EmailConfigurations() {
   // CHOICES VIEW
   if (mode === 'choices') {
     const hasGmail = items.some(c => c.provider === 'gmail' && c.is_connected);
-    const hasOutlook = items.some(c => c.provider === 'outlook' && c.is_connected);
 
     return (
       <div className="space-y-6">
