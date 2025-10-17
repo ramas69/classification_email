@@ -21,17 +21,13 @@ export function Dashboard() {
   useEffect(() => {
     checkGmailConnection();
 
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (event.data.type === 'gmail-connected') {
-        setGmailConnected(true);
-        setGmailEmail(event.data.email);
         setIsConnecting(false);
-        setShowCompanyForm(true);
-        setActiveView('company-info');
+        await checkGmailConnection();
       } else if (event.data.type === 'outlook-connected') {
-        setGmailConnected(true);
-        setGmailEmail(event.data.email);
         setIsConnecting(false);
+        await checkGmailConnection();
       }
     };
 
