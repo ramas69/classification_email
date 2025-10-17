@@ -105,8 +105,12 @@ Deno.serve(async (req)=>{
             <div class="subtitle">Vous pouvez fermer cette fenêtre.</div>
           </div>
           <script>
-            window.opener && window.opener.postMessage({ type: 'gmail-connected', email: '${userInfo.email}' }, '*');
-            setTimeout(() => window.close(), 800);
+            if (window.opener) {
+              window.opener.postMessage({ type: 'gmail-connected', email: '${userInfo.email}' }, '*');
+              setTimeout(() => window.close(), 500);
+            } else {
+              window.location.href = '${redirectUrl || supabaseUrl}';
+            }
           </script>
         </body>
     </html>`, {

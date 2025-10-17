@@ -93,11 +93,19 @@ export function Dashboard() {
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
 
-      window.open(
+      const popup = window.open(
         authUrl,
         'Gmail OAuth',
         `width=${width},height=${height},left=${left},top=${top}`
       );
+
+      const checkPopup = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(checkPopup);
+          setIsConnecting(false);
+          window.location.reload();
+        }
+      }, 500);
     } catch (error) {
       console.error('Error connecting Gmail:', error);
       setIsConnecting(false);
