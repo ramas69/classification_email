@@ -239,7 +239,7 @@ export function Settings() {
               <p className="font-medium text-gray-900">{formData.activityDescription || 'Non renseigné'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Services proposés</p>
+              <p className="text-sm text-gray-500">Signature</p>
               <p className="font-medium text-gray-900">{formData.services || 'Non renseigné'}</p>
             </div>
           </div>
