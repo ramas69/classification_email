@@ -24,10 +24,10 @@ export function Dashboard() {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data.type === 'gmail-connected') {
         setIsConnecting(false);
-        await checkGmailConnection();
+        window.location.reload();
       } else if (event.data.type === 'outlook-connected') {
         setIsConnecting(false);
-        await checkGmailConnection();
+        window.location.reload();
       }
     };
 
