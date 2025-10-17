@@ -143,7 +143,7 @@ export function Dashboard() {
                 }`}
               >
                 <Mail className="w-4 h-4" />
-                Emails
+                Comptes configurés
               </button>
               <button
                 onClick={() => setActiveView('settings')}
