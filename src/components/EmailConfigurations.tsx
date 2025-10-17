@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Mail, CheckCircle } from 'lucide-react';
+import { ConfirmationModal } from './ConfirmationModal';
 
 type SimpleConfigRow = {
   id: string;
@@ -26,6 +27,8 @@ export function EmailConfigurations() {
   const [items, setItems] = useState<SimpleConfigRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<'choices' | 'imap_form' | 'account'>('choices');
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Formulaire simplifié selon votre JSON
   const [formData, setFormData] = useState({
@@ -186,16 +189,18 @@ export function EmailConfigurations() {
   };
 
 
+  const handleDisconnectClick = () => {
+    setShowDisconnectModal(true);
+  };
+
   const disconnectOutlook = async () => {
     if (!user?.id) return;
     try {
-      // Tente de supprimer le token Outlook (si les politiques RLS le permettent)
       await supabase
         .from('outlook_tokens')
         .delete()
         .eq('user_id', user.id);
 
-      // Marque la configuration comme déconnectée côté UI/données
       const { error: updateError } = await supabase
         .from('email_configurations')
         .update({ is_connected: false })
@@ -203,7 +208,6 @@ export function EmailConfigurations() {
       if (updateError) throw updateError;
 
       await loadLatestConfig();
-      alert('Compte Outlook déconnecté.');
     } catch (err) {
       console.error('Erreur déconnexion Outlook:', err);
       alert('Impossible de déconnecter Outlook pour le moment.');
@@ -274,10 +278,12 @@ export function EmailConfigurations() {
     }
   };
 
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
   const handleDelete = async () => {
     if (!user?.id) return;
-    const confirmDelete = confirm('Supprimer votre configuration email ?');
-    if (!confirmDelete) return;
     try {
       const { error } = await supabase
         .from('email_configurations')
@@ -441,7 +447,7 @@ export function EmailConfigurations() {
               {cfg?.provider === 'outlook' && cfg?.is_connected && (
                 <button
                   type="button"
-                  onClick={disconnectOutlook}
+                  onClick={handleDisconnectClick}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Déconnecter
@@ -449,7 +455,7 @@ export function EmailConfigurations() {
               )}
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 className="px-4 py-2 border border-red-200 text-red-700 rounded-lg hover:bg-red-50"
               >
                 Supprimer
@@ -689,6 +695,26 @@ export function EmailConfigurations() {
           </ul>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={disconnectOutlook}
+        title="Déconnecter le compte"
+        message={`Êtes-vous sûr de vouloir déconnecter ${items[0]?.email} ? Vous pourrez vous reconnecter à tout moment.`}
+        confirmText="Déconnecter"
+        cancelText="Annuler"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="Supprimer la configuration"
+        message={`Êtes-vous sûr de vouloir supprimer définitivement la configuration de ${items[0]?.email} ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+      />
     </div>
   );
 }

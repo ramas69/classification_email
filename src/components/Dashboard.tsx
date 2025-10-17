@@ -4,6 +4,7 @@ import { LogOut, Settings as SettingsIcon, Mail } from 'lucide-react';
 import { Settings } from './Settings';
 import { EmailConfigurations } from './EmailConfigurations';
 import { CompanyInfoForm } from './CompanyInfoForm';
+import { ConfirmationModal } from './ConfirmationModal';
 import { supabase } from '../lib/supabase';
 
 type ActiveView = 'home' | 'settings' | 'email-configs' | 'company-info';
@@ -15,6 +16,7 @@ export function Dashboard() {
   const [gmailEmail, setGmailEmail] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
 
   useEffect(() => {
     checkGmailConnection();
@@ -106,6 +108,14 @@ export function Dashboard() {
     }
   };
 
+
+  const handleDisconnectClick = () => {
+    if (gmailConnected) {
+      setShowDisconnectModal(true);
+    } else {
+      connectGmail();
+    }
+  };
 
   const disconnectGmail = async () => {
     await supabase
@@ -219,7 +229,7 @@ export function Dashboard() {
               <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   type="button"
-                  onClick={gmailConnected ? disconnectGmail : connectGmail}
+                  onClick={handleDisconnectClick}
                   disabled={isConnecting}
                   className={`w-full py-4 rounded-lg font-medium flex items-center justify-center gap-3 transition-all ${
                     gmailConnected
@@ -317,6 +327,16 @@ export function Dashboard() {
           </>
         )}
       </main>
+
+      <ConfirmationModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={disconnectGmail}
+        title="Déconnecter le compte"
+        message={`Êtes-vous sûr de vouloir déconnecter ${gmailEmail} ? Toutes les configurations associées seront perdues.`}
+        confirmText="Déconnecter"
+        cancelText="Annuler"
+      />
     </div>
   );
 }
