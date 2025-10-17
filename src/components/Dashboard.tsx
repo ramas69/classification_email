@@ -241,8 +241,12 @@ export function Dashboard() {
 
                 <button
                   type="button"
-                  disabled
-                  className="w-full bg-gray-100 border-2 border-gray-200 text-gray-400 py-4 rounded-lg font-medium flex items-center justify-center gap-3 cursor-not-allowed opacity-60"
+                  disabled={gmailConnected}
+                  className={`w-full py-4 rounded-lg font-medium flex items-center justify-center gap-3 transition-all ${
+                    gmailConnected
+                      ? 'bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                      : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#EF6855] hover:shadow-md'
+                  }`}
                 >
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M22 3H2C.9 3 0 3.9 0 5v14c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H2V8l10 6 10-6v11z"/>
@@ -253,7 +257,12 @@ export function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setActiveView('settings')}
-                  className="w-full bg-white border-2 border-gray-200 text-gray-700 py-4 rounded-lg font-medium flex items-center justify-center gap-3 hover:border-[#EF6855] hover:shadow-md transition-all"
+                  disabled={gmailConnected}
+                  className={`w-full py-4 rounded-lg font-medium flex items-center justify-center gap-3 transition-all ${
+                    gmailConnected
+                      ? 'bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                      : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#EF6855] hover:shadow-md'
+                  }`}
                 >
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="16" rx="2"/>

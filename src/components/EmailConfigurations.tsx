@@ -313,6 +313,9 @@ export function EmailConfigurations() {
   // CHOICES VIEW
   if (mode === 'choices') {
     const hasGmail = items.some(c => c.provider === 'gmail' && c.is_connected);
+    const hasOutlook = items.some(c => c.provider === 'outlook' && c.is_connected);
+    const hasIMAP = items.some(c => c.provider === 'smtp_imap' && c.is_connected);
+    const hasAnyConnection = hasGmail || hasOutlook || hasIMAP;
 
     return (
       <div className="space-y-6">
@@ -329,10 +332,12 @@ export function EmailConfigurations() {
             <button
               type="button"
               onClick={connectGmail}
-              disabled={hasGmail}
+              disabled={hasGmail || hasOutlook || hasIMAP}
               className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
                 hasGmail
                   ? 'bg-green-50 border-2 border-green-200 text-green-700 cursor-not-allowed'
+                  : (hasOutlook || hasIMAP)
+                  ? 'bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
                   : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#EF6855] hover:shadow-md'
               }`}
             >
@@ -353,7 +358,7 @@ export function EmailConfigurations() {
             </button>
             <button
               type="button"
-              disabled
+              disabled={true}
               className="flex items-center gap-3 px-6 py-3 rounded-lg bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed opacity-60"
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
@@ -364,7 +369,14 @@ export function EmailConfigurations() {
             <button
               type="button"
               onClick={() => setMode('imap_form')}
-              className="flex items-center gap-3 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-lg hover:border-[#EF6855] hover:shadow-md transition-all"
+              disabled={hasGmail || hasOutlook || hasIMAP}
+              className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
+                hasIMAP
+                  ? 'bg-green-50 border-2 border-green-200 text-green-700 cursor-not-allowed'
+                  : (hasGmail || hasOutlook)
+                  ? 'bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#EF6855] hover:shadow-md'
+              }`}
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="16" rx="2"/>
